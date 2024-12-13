@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据库压测监控</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        .metrics-card {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            height: 400px;
+            margin: 20px 0;
+        }
+        .sql-result {
+            max-height: 400px;
+            overflow: auto;
+        }
+        .tab-content {
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center my-4">数据库压测监控</h1>
+        
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#stressTest">压���测试</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#sqlExecute">SQL执行</a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div id="stressTest" class="tab-pane active">
+                <div class="row mb-4">
+                    <div class="col text-center">
+                        <button id="startBtn" class="btn btn-primary mx-2">开始压测</button>
+                        <button id="stopBtn" class="btn btn-danger mx-2">停止压测</button>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">数据源配置</h5>
+                            </div>
+                            <div class="card-body">
+                                <select id="dataSourceSelect" class="form-select">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row metrics-card">
+                    <div class="col-md-4">
+                        <h4>总请求数</h4>
+                        <h2 id="totalRequests">0</h2>
+                    </div>
+                    <div class="col-md-4">
+                        <h4>成功请求数</h4>
+                        <h2 id="successRequests">0</h2>
+                    </div>
+                    <div class="col-md-4">
+                        <h4>失败请求数</h4>
+                        <h2 id="failedRequests">0</h2>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div id="tpsChart" class="chart-container"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="responseTimeChart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">压测配置</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="configForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>线程池配置</h6>
+                                            <div class="mb-3">
+                                                <label class="form-label">核心线程数</label>
+                                                <input type="number" class="form-control" name="threadPool.coreSize">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">最大线程数</label>
+                                                <input type="number" class="form-control" name="threadPool.maxSize">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">队列容量</label>
+                                                <input type="number" class="form-control" name="threadPool.queueCapacity">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>时间配置</h6>
+                                            <div class="mb-3">
+                                                <label class="form-label">运行时间(秒)</label>
+                                                <input type="number" class="form-control" name="duration">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">预热时间(秒)</label>
+                                                <input type="number" class="form-control" name="warmUp">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">采样率(秒)</label>
+                                                <input type="number" class="form-control" name="sampleRate">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <h6>SQL配置</h6>
+                                            <div class="mb-3">
+                                                <label class="form-label">SQL语句</label>
+                                                <textarea class="form-control" name="sql.sql" rows="4"></textarea>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">参数内容 (CSV格式)</label>
+                                                <textarea class="form-control" name="sql.params" rows="4" placeholder="每行一组参数，用逗号分隔"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">保存配置</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sqlExecute" class="tab-pane fade">
+                <div class="row mb-4">
+                    <div class="col">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">SQL执行器</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="sqlForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">数据源</label>
+                                        <select id="execDataSourceSelect" class="form-select">
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">SQL语句</label>
+                                        <textarea class="form-control" id="sqlInput" rows="5" placeholder="输入SQL语句"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">执行</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">执行结果</h5>
+                            </div>
+                            <div class="card-body sql-result">
+                                <div id="sqlResult"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 初始化图表
+        const tpsChart = echarts.init(document.getElementById('tpsChart'));
+        const responseTimeChart = echarts.init(document.getElementById('responseTimeChart'));
+        
+        // TPS图表配置
+        const tpsOption = {
+            title: { text: '每秒处理请求数(TPS)' },
+            tooltip: { trigger: 'axis' },
+            xAxis: { type: 'time' },
+            yAxis: { type: 'value' },
+            series: [{
+                name: 'TPS',
+                type: 'line',
+                data: []
+            }]
+        };
+        
+        // 响应时间图表配置
+        const responseTimeOption = {
+            title: { text: '响应时间(ms)' },
+            tooltip: { trigger: 'axis' },
+            legend: {
+                data: ['总平均响应时间', '最近响应时间']
+            },
+            xAxis: { type: 'time' },
+            yAxis: { type: 'value' },
+            series: [
+                {
+                    name: '总平均响应时间',
+                    type: 'line',
+                    data: []
+                },
+                {
+                    name: '最近响应时间',
+                    type: 'line',
+                    data: []
+                }
+            ]
+        };
+        
+        tpsChart.setOption(tpsOption);
+        responseTimeChart.setOption(responseTimeOption);
+
+        // 更新数据的函数
+        function updateMetrics() {
+            fetch('/api/stress/metrics')
+                .then(response => response.json())
+                .then(data => {
+                    // 更新统计数字
+                    document.getElementById('totalRequests').textContent = data.totalRequests;
+                    document.getElementById('successRequests').textContent = data.successRequests;
+                    document.getElementById('failedRequests').textContent = data.failedRequests;
+
+                    // 更新图表
+                    const now = new Date();
+                    tpsChart.setOption({
+                        series: [{
+                            data: [...tpsChart.getOption().series[0].data, {
+                                name: now.toString(),
+                                value: [now, data.tps]
+                            }].slice(-60) // 保留最近60个数据点
+                        }]
+                    });
+
+                    responseTimeChart.setOption({
+                        series: [
+                            {
+                                data: [...responseTimeChart.getOption().series[0].data, {
+                                    name: now.toString(),
+                                    value: [now, data.avgResponseTime]
+                                }].slice(-60)
+                            },
+                            {
+                                data: [...responseTimeChart.getOption().series[1].data, {
+                                    name: now.toString(),
+                                    value: [now, data.recentAvgResponseTime]
+                                }].slice(-60)
+                            }
+                        ]
+                    });
+                });
+        }
+
+        // 定时更新数据
+        setInterval(updateMetrics, 1000);
+
+        // 按钮事件处理
+        document.getElementById('startBtn').onclick = () => {
+            fetch('/api/stress/start', { method: 'POST' });
+        };
+
+        document.getElementById('stopBtn').onclick = () => {
+            fetch('/api/stress/stop', { method: 'POST' });
+        };
+
+        // 窗口大小改变时重绘图表
+        window.onresize = () => {
+            tpsChart.resize();
+            responseTimeChart.resize();
+        };
+
+        // 加载配置
+        function loadConfig() {
+            fetch('/api/stress/config')
+                .then(response => response.json())
+                .then(config => {
+                    document.querySelector('input[name="threadPool.coreSize"]').value = config.threadPool.coreSize;
+                    document.querySelector('input[name="threadPool.maxSize"]').value = config.threadPool.maxSize;
+                    document.querySelector('input[name="threadPool.queueCapacity"]').value = config.threadPool.queueCapacity;
+                    document.querySelector('input[name="duration"]').value = config.duration;
+                    document.querySelector('input[name="warmUp"]').value = config.warmUp;
+                    document.querySelector('input[name="sampleRate"]').value = config.sampleRate;
+                    document.querySelector('textarea[name="sql.sql"]').value = config.sql.sql;
+                    document.querySelector('textarea[name="sql.params"]').value = config.sql.params;
+                });
+        }
+
+        // 保存配置
+        document.getElementById('configForm').onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const config = {
+                threadPool: {
+                    coreSize: parseInt(formData.get('threadPool.coreSize')),
+                    maxSize: parseInt(formData.get('threadPool.maxSize')),
+                    queueCapacity: parseInt(formData.get('threadPool.queueCapacity'))
+                },
+                duration: parseInt(formData.get('duration')),
+                warmUp: parseInt(formData.get('warmUp')),
+                sampleRate: parseInt(formData.get('sampleRate')),
+                sql: {
+                    sql: formData.get('sql.sql'),
+                    params: formData.get('sql.params')
+                }
+            };
+
+            fetch('/api/stress/config', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            }).then(() => {
+                alert('配置已保存');
+            }).catch(error => {
+                alert('保存配置失败: ' + error.message);
+            });
+        };
+
+        // 页面加载时加载配置
+        loadConfig();
+
+        // 加载数据源列表
+        function loadDataSources() {
+            fetch('/api/stress/datasources')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('dataSourceSelect');
+                    select.innerHTML = '';
+                    Object.entries(data.available).forEach(([key, config]) => {
+                        const option = document.createElement('option');
+                        option.value = key;
+                        option.text = config.name;
+                        option.selected = key === data.active;
+                        select.appendChild(option);
+                    });
+                });
+        }
+
+        // 切换数据源
+        document.getElementById('dataSourceSelect').onchange = function(e) {
+            fetch('/api/stress/datasource/switch?name=' + e.target.value, {
+                method: 'POST'
+            }).then(() => {
+                alert('数据源切换成功');
+            }).catch(error => {
+                alert('数据源切换失败: ' + error.message);
+                loadDataSources(); // 重新加载数据源列表
+            });
+        };
+
+        // 页面加载时加载数据源列表
+        loadDataSources();
+
+        document.getElementById('sqlForm').onsubmit = function(e) {
+            e.preventDefault();
+            const dataSource = document.getElementById('execDataSourceSelect').value;
+            const sql = document.getElementById('sqlInput').value;
+            
+            fetch('/api/stress/execute-sql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    dataSource: dataSource,
+                    sql: sql
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                const resultDiv = document.getElementById('sqlResult');
+                if (result.isQuery) {
+                    // 显示查询结果表格
+                    let html = '<table class="table table-striped"><thead><tr>';
+                    // 添加表头
+                    if (result.data.length > 0) {
+                        Object.keys(result.data[0]).forEach(key => {
+                            html += `<th>${key}</th>`;
+                        });
+                    }
+                    html += '</tr></thead><tbody>';
+                    // 添加数据行
+                    result.data.forEach(row => {
+                        html += '<tr>';
+                        Object.values(row).forEach(value => {
+                            html += `<td>${value}</td>`;
+                        });
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    // 显示执行结果
+                    resultDiv.innerHTML = `<div class="alert alert-success">
+                        执行成功，影响行数：${result.affectedRows}
+                    </div>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('sqlResult').innerHTML = `
+                    <div class="alert alert-danger">
+                        执行失败：${error.message}
+                    </div>`;
+            });
+        };
+
+        function loadExecDataSources() {
+            fetch('/api/stress/datasources')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('execDataSourceSelect');
+                    select.innerHTML = '';
+                    Object.entries(data.available).forEach(([key, config]) => {
+                        const option = document.createElement('option');
+                        option.value = key;
+                        option.text = config.name;
+                        option.selected = key === data.active;
+                        select.appendChild(option);
+                    });
+                });
+        }
+
+        loadExecDataSources();
+    </script>
+</body>
+</html> 

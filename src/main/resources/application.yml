@@ -1,0 +1,71 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    # 当前激活的数据源
+    active: mysql
+
+dbconfig:
+  datasources:
+    mysql:
+      name: MySQL数据库
+      url: jdbc:mysql://10.203.88.206:3306/fs_cia
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      username: kcia
+      password: kcia
+    sqlserver:
+      name: SQLServer数据库
+      url: jdbc:sqlserver://10.203.88.206:1433;DatabaseName=fs_cia
+      driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+      username: sa
+      password: 1qaz@WSX
+    postgresql:
+      name: PostgreSQL数据库
+      url: jdbc:postgresql://localhost:5432/test
+      driver-class-name: org.postgresql.Driver
+      username: postgres
+      password: postgres
+    oracle:
+      name: Oracle数据库
+      url: jdbc:oracle:thin:@localhost:1521:XE
+      driver-class-name: oracle.jdbc.OracleDriver
+      username: system
+      password: oracle
+    sqlite:
+      name: SQLite数据库
+      url: jdbc:sqlite:test.db
+      driver-class-name: org.sqlite.JDBC
+      username: root
+      password: root
+    duckdb:
+      name: DuckDB数据库
+      url: jdbc:duckdb:test.duckdb
+      driver-class-name: org.duckdb.DuckDBDriver
+      username: root
+      password: root
+    gaussdb:
+      name: GaussDB数据库
+      url: jdbc:postgresql://10.203.88.206:5432/fs_cia
+      driver-class-name: com.huawei.gauss.jdbc.Driver
+      username: kcia
+      password: kcia
+
+# Druid连接池配置
+druid:
+  initial-size: 5
+  min-idle: 5
+  max-active: 20
+  max-wait: 60000
+
+# 压测配置
+stress:
+  thread-pool:
+    core-size: 10
+    max-size: 20
+    queue-capacity: 100
+  duration: 300
+  sample-rate: 3
+  sql:
+    file-path: "./src/main/resources/sql/test.sql"
+    params-path: "./src/main/resources/sql/params.csv"

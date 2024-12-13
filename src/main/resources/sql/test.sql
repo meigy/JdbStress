@@ -1,0 +1,1 @@
+INSERT INTO test_table (name, age, email) VALUES (:p1, :p2, :p3)
