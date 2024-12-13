@@ -33,6 +33,10 @@ public class DataSourceConfig {
 
     @Bean
     public NamedParameterJdbcTemplate namedJdbcTemplate() {
+        return createNamedJdbcTemplate();
+    }
+
+    public NamedParameterJdbcTemplate createNamedJdbcTemplate() {
         return new NamedParameterJdbcTemplate(createJdbcTemplate(activeDataSource));
     }
 
@@ -40,6 +44,7 @@ public class DataSourceConfig {
         if (!dataSourceProperties.getDatasources().containsKey(dataSourceName)) {
             throw new IllegalArgumentException("数据源不存在: " + dataSourceName);
         }
+        activeDataSource = dataSourceName;
         return createJdbcTemplate(dataSourceName);
     }
 

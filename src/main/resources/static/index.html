@@ -32,7 +32,7 @@
         
         <ul class="nav nav-tabs" role="tablist">
             <li class="nav-item">
-                <a class="nav-link active" data-bs-toggle="tab" href="#stressTest">压���测试</a>
+                <a class="nav-link active" data-bs-toggle="tab" href="#stressTest">压力测试</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" data-bs-toggle="tab" href="#sqlExecute">SQL执行</a>
@@ -44,7 +44,8 @@
                 <div class="row mb-4">
                     <div class="col text-center">
                         <button id="startBtn" class="btn btn-primary mx-2">开始压测</button>
-                        <button id="stopBtn" class="btn btn-danger mx-2">停止压测</button>
+                        <button id="stopBtn" class="btn btn-danger mx-2" disabled>停止压测</button>
+                        <span id="testStatus" class="badge bg-secondary ms-2">未开始</span>
                     </div>
                 </div>
 
@@ -115,10 +116,6 @@
                                             <div class="mb-3">
                                                 <label class="form-label">运行时间(秒)</label>
                                                 <input type="number" class="form-control" name="duration">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label">预热时间(秒)</label>
-                                                <input type="number" class="form-control" name="warmUp">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label">采样率(秒)</label>
@@ -234,6 +231,9 @@
         tpsChart.setOption(tpsOption);
         responseTimeChart.setOption(responseTimeOption);
 
+        let updateTimer = null;
+        let isRunning = false;
+
         // 更新数据的函数
         function updateMetrics() {
             fetch('/api/stress/metrics')
@@ -251,7 +251,7 @@
                             data: [...tpsChart.getOption().series[0].data, {
                                 name: now.toString(),
                                 value: [now, data.tps]
-                            }].slice(-60) // 保留最近60个数据点
+                            }].slice(-60)
                         }]
                     });
 
@@ -274,16 +274,60 @@
                 });
         }
 
-        // 定时更新数据
-        setInterval(updateMetrics, 1000);
+        // 清除图表数据
+        function clearCharts() {
+            tpsChart.setOption({
+                series: [{
+                    data: []
+                }]
+            });
+            responseTimeChart.setOption({
+                series: [{
+                    data: []
+                }, {
+                    data: []
+                }]
+            });
+        }
 
         // 按钮事件处理
         document.getElementById('startBtn').onclick = () => {
-            fetch('/api/stress/start', { method: 'POST' });
+            fetch('/api/stress/start', { method: 'POST' })
+                .then(() => {
+                    isRunning = true;
+                    updateButtonState();
+                    clearCharts();
+                    if (updateTimer) {
+                        clearInterval(updateTimer);
+                    }
+                    updateTimer = setInterval(updateMetrics, 1000);
+                    updateMetrics(); // 立即更新一次
+                })
+                .catch(error => {
+                    alert('启动失败: ' + error.message);
+                });
         };
 
         document.getElementById('stopBtn').onclick = () => {
-            fetch('/api/stress/stop', { method: 'POST' });
+            fetch('/api/stress/stop', { method: 'POST' })
+                .then(() => {
+                    isRunning = false;
+                    updateButtonState();
+                    if (updateTimer) {
+                        clearInterval(updateTimer);
+                        updateTimer = null;
+                    }
+                })
+                .catch(error => {
+                    alert('停止失败: ' + error.message);
+                });
+        };
+
+        // 页面卸载时清理定时器
+        window.onunload = () => {
+            if (updateTimer) {
+                clearInterval(updateTimer);
+            }
         };
 
         // 窗口大小改变时重绘图表
@@ -301,7 +345,6 @@
                     document.querySelector('input[name="threadPool.maxSize"]').value = config.threadPool.maxSize;
                     document.querySelector('input[name="threadPool.queueCapacity"]').value = config.threadPool.queueCapacity;
                     document.querySelector('input[name="duration"]').value = config.duration;
-                    document.querySelector('input[name="warmUp"]').value = config.warmUp;
                     document.querySelector('input[name="sampleRate"]').value = config.sampleRate;
                     document.querySelector('textarea[name="sql.sql"]').value = config.sql.sql;
                     document.querySelector('textarea[name="sql.params"]').value = config.sql.params;
@@ -390,7 +433,14 @@
                     sql: sql
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || '执行失败');
+                    });
+                }
+                return response.json();
+            })
             .then(result => {
                 const resultDiv = document.getElementById('sqlResult');
                 if (result.isQuery) {
@@ -423,7 +473,7 @@
             .catch(error => {
                 document.getElementById('sqlResult').innerHTML = `
                     <div class="alert alert-danger">
-                        执行失败：${error.message}
+                        ${error.message}
                     </div>`;
             });
         };
@@ -445,6 +495,30 @@
         }
 
         loadExecDataSources();
+
+        function updateButtonState() {
+            document.getElementById('startBtn').disabled = isRunning;
+            document.getElementById('stopBtn').disabled = !isRunning;
+            const statusBadge = document.getElementById('testStatus');
+            statusBadge.textContent = isRunning ? '运行中' : '未开始';
+            statusBadge.className = isRunning ? 'badge bg-success ms-2' : 'badge bg-secondary ms-2';
+        }
+
+        // 页面加载时检查压测状态
+        function checkTestStatus() {
+            fetch('/api/stress/status')
+                .then(response => response.json())
+                .then(data => {
+                    isRunning = data.running;
+                    updateButtonState();
+                    if (isRunning && !updateTimer) {
+                        updateTimer = setInterval(updateMetrics, 1000);
+                    }
+                });
+        }
+
+        // 页面加载时检查状态
+        checkTestStatus();
     </script>
 </body>
 </html> 

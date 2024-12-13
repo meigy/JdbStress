@@ -5,6 +5,8 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 
+import com.meigy.jstress.config.DataSourceConfig;
+
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -12,7 +14,8 @@ import java.util.regex.Pattern;
 @Slf4j
 @Component
 public class SqlExecutor {
-    private final NamedParameterJdbcTemplate namedJdbcTemplate;
+    private NamedParameterJdbcTemplate namedJdbcTemplate;
+    private final DataSourceConfig dataSourceConfig;
     
     // SQL类型的正则表达式
     private static final Pattern SELECT_PATTERN = Pattern.compile("^\\s*SELECT\\s+.*$", Pattern.CASE_INSENSITIVE);
@@ -29,8 +32,13 @@ public class SqlExecutor {
 
     private SqlType sqlType;
 
-    public SqlExecutor(NamedParameterJdbcTemplate namedJdbcTemplate) {
-        this.namedJdbcTemplate = namedJdbcTemplate;
+    public SqlExecutor(DataSourceConfig dataSourceConfig) {
+        this.dataSourceConfig = dataSourceConfig;
+        switchDataSource();
+    }
+
+    public void switchDataSource() {
+        this.namedJdbcTemplate = dataSourceConfig.createNamedJdbcTemplate();;
     }
 
     /**

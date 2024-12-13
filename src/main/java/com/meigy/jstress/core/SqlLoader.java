@@ -40,6 +40,10 @@ public class SqlLoader {
         sqlExecutor.execute(sql, currentParams);
     }
 
+    public void switchDataSource() {
+        sqlExecutor.switchDataSource();
+    }
+
     private String[] getNextParams() {
         if (params == null || params.isEmpty()) {
             return new String[0];

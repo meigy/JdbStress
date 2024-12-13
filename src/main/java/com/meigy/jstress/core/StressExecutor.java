@@ -10,28 +10,28 @@ import com.meigy.jstress.report.ConsoleReporter;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.Future;
 
 import org.springframework.web.bind.annotation.PostMapping;
 
 @Slf4j
 @Component
 public class StressExecutor {
-    private final JdbcTemplate jdbcTemplate;
     private final ThreadPoolTaskExecutor executor;
     private final SqlLoader sqlLoader;
     private final MetricsCollector metricsCollector;
     private final StressProperties properties;
     private final ConsoleReporter consoleReporter;
     
-    private final AtomicBoolean running = new AtomicBoolean(false);
+    private volatile StressContext currentContext;
 
-    public StressExecutor(JdbcTemplate jdbcTemplate,
-                         ThreadPoolTaskExecutor stressTestExecutor,
+    public StressExecutor(ThreadPoolTaskExecutor stressTestExecutor,
                          SqlLoader sqlLoader,
                          MetricsCollector metricsCollector,
                          StressProperties properties,
                          ConsoleReporter consoleReporter) {
-        this.jdbcTemplate = jdbcTemplate;
         this.executor = stressTestExecutor;
         this.sqlLoader = sqlLoader;
         this.metricsCollector = metricsCollector;
@@ -40,61 +40,54 @@ public class StressExecutor {
     }
 
     public void start() throws Exception {
-        if (!running.compareAndSet(false, true)) {
+        if (currentContext != null && currentContext.isRunning()) {
             log.warn("压测已在运行中");
             return;
         }
 
+        String taskId = String.valueOf(System.currentTimeMillis());
+        
         // 加载SQL和参数
         sqlLoader.loadSql(properties.getSql().getFilePath());
         sqlLoader.loadParams(properties.getSql().getParamsPath());
+        sqlLoader.switchDataSource();
+        
+        List<Future<?>> taskFutures = new ArrayList<>();
 
-        // 启动监控线程
-        startMonitorThread();
+        // 创建自动停止线程（如果需要）
+        Thread autoStopThread = null;
+        if (properties.getDuration() > 0) {
+            autoStopThread = createAutoStopThread(taskId);
+            autoStopThread.start();
+        }
 
+        // 创建上下文
+        currentContext = new StressContext(taskId, metricsCollector, properties, taskFutures, autoStopThread);
+        
         // 启动工作线程
         int threadCount = properties.getThreadPool().getCoreSize();
         for (int i = 0; i < threadCount; i++) {
-            executor.execute(new StressTask());
+            Future<?> future = executor.submit(new StressTask());
+            taskFutures.add(future);
         }
 
         // 启动控制台报告
         consoleReporter.start(properties.getSampleRate());
-
-        // 运行指定时间后停止
-        if (properties.getDuration() > 0) {
-            Thread.sleep(properties.getDuration() * 1000L);
-            stop();
-        }
     }
 
-    public void stop() {
-        if (running.compareAndSet(true, false)) {
-            executor.shutdown();
+    public void stop(StressContext.StopReason reason) {
+        if (currentContext != null && currentContext.isRunning()) {
+            currentContext.shutdown(reason);
             consoleReporter.stop();
+            log.info("压测已停止，原因: {}", reason.getDescription());
+            currentContext = null;
         }
-    }
-
-    private void startMonitorThread() {
-        Thread monitorThread = new Thread(() -> {
-            try {
-                while (running.get()) {
-                    metricsCollector.calculateMetrics(properties.getSampleRate());
-                    Thread.sleep(1000);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        });
-        monitorThread.setName("metrics-monitor");
-        monitorThread.setDaemon(true);
-        monitorThread.start();
     }
 
     private class StressTask implements Runnable {
         @Override
         public void run() {
-            while (running.get()) {
+            while (currentContext != null && currentContext.isRunning()) {
                 long startTime = System.currentTimeMillis();
                 try {
                     sqlLoader.executeSql();
@@ -108,8 +101,25 @@ public class StressExecutor {
         }
     }
 
+    private Thread createAutoStopThread(String taskId) {
+        Thread autoStopThread = new Thread(() -> {
+            try {
+                Thread.sleep(properties.getDuration() * 1000L);
+                if (currentContext != null 
+                        && currentContext.isRunning() 
+                        && taskId.equals(currentContext.getTaskId())) {
+                    stop(StressContext.StopReason.TIMEOUT);
+                }
+            } catch (InterruptedException e) {
+                // 正常中断，不需要处理
+            }
+        });
+        autoStopThread.setDaemon(true);
+        return autoStopThread;
+    }
+
     public boolean isRunning() {
-        return running.get();
+        return currentContext != null && currentContext.isRunning();
     }
 
     @PostMapping("/status")

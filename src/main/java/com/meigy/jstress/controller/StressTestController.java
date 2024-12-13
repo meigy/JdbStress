@@ -2,6 +2,7 @@ package com.meigy.jstress.controller;
 
 import com.meigy.jstress.core.MetricsCollector;
 import com.meigy.jstress.core.StressExecutor;
+import com.meigy.jstress.core.StressContext.StopReason;
 import com.meigy.jstress.model.StressTestConfig;
 import com.meigy.jstress.service.ConfigurationService;
 import com.meigy.jstress.config.DataSourceConfig;
@@ -29,12 +30,13 @@ public class StressTestController {
 
     @PostMapping("/start")
     public void start() throws Exception {
+        metricsCollector.reset();
         stressExecutor.start();
     }
 
     @PostMapping("/stop")
     public void stop() {
-        stressExecutor.stop();
+        stressExecutor.stop(StopReason.MANUAL);
     }
 
     @GetMapping("/metrics")
@@ -105,6 +107,13 @@ public class StressTestController {
             throw new RuntimeException("SQL执行失败: " + e.getMessage());
         }
         return result;
+    }
+
+    @GetMapping("/status")
+    public Map<String, Object> getStatus() {
+        Map<String, Object> status = new HashMap<>();
+        status.put("running", stressExecutor.isRunning());
+        return status;
     }
 
     public static class MetricsResponse {

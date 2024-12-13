@@ -52,4 +52,17 @@ public class MetricsCollector {
             lastResponseTime = currentTotalResponseTime;
         }
     }
+
+    public void reset() {
+        totalRequests.reset();
+        successRequests.reset();
+        failedRequests.reset();
+        totalResponseTime.set(0);
+        lastSampleTime = System.currentTimeMillis();
+        lastSuccessCount = 0;
+        lastResponseTime = 0;
+        tps = 0.0;
+        avgResponseTime = 0.0;
+        recentAvgResponseTime = 0.0;
+    }
 } 
