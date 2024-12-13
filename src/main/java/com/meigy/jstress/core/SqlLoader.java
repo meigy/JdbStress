@@ -24,7 +24,11 @@ public class SqlLoader {
     }
 
     public void loadSql(String sqlPath) throws Exception {
-        sql = Files.readString(Paths.get(sqlPath), StandardCharsets.UTF_8);
+        byte[] bytes = Files.readAllBytes(Paths.get(sqlPath));
+        this.sql = new String(bytes, StandardCharsets.UTF_8);
+        if (sql == null || sql.isEmpty()) {
+            throw new IllegalArgumentException("SQL文件为空");
+        }
         // 加载时就分析SQL类型
         sqlExecutor.analyzeSql(sql);
     }

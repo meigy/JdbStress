@@ -79,7 +79,7 @@ public class StressExecutor {
         if (currentContext != null && currentContext.isRunning()) {
             currentContext.shutdown(reason);
             consoleReporter.stop();
-            log.info("压测已停止，原因: {}", reason.getDescription());
+            //log.info("压测已停止，原因: {}", reason.getDescription());
             currentContext = null;
         }
     }
