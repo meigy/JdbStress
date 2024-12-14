@@ -2,14 +2,20 @@ package com.meigy.jstress.service;
 
 import com.meigy.jstress.config.StressProperties;
 import com.meigy.jstress.model.StressTestConfig;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
-import org.apache.commons.io.FileUtils;
+import org.springframework.util.FileCopyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 
 @Service
 public class ConfigurationService {
@@ -37,25 +43,21 @@ public class ConfigurationService {
         // 加载SQL配置
         StressTestConfig.SqlConfig sqlConfig = new StressTestConfig.SqlConfig();
         try {
-            File sqlFile = new File(properties.getSql().getFilePath());
-            if (!sqlFile.exists()) {
-                log.warn("SQL文件不存在: {}", sqlFile.getAbsolutePath());
-                sqlConfig.setSql("");
-            } else {
-                String sql = FileUtils.readFileToString(sqlFile, StandardCharsets.UTF_8);
-                sqlConfig.setSql(sql);
+            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+            
+            // 读取SQL文件
+            Resource sqlResource = resolver.getResource(properties.getSql().getFilePath());
+            try (Reader reader = new InputStreamReader(sqlResource.getInputStream(), StandardCharsets.UTF_8)) {
+                sqlConfig.setSql(FileCopyUtils.copyToString(reader));
             }
 
-            File paramsFile = new File(properties.getSql().getParamsPath());
-            if (!paramsFile.exists()) {
-                log.warn("参数文件不存在: {}", paramsFile.getAbsolutePath());
-                sqlConfig.setParams("");
-            } else {
-                String params = FileUtils.readFileToString(paramsFile, StandardCharsets.UTF_8);
-                sqlConfig.setParams(params);
+            // 读取参数文件
+            Resource paramsResource = resolver.getResource(properties.getSql().getParamsPath());
+            try (Reader reader = new InputStreamReader(paramsResource.getInputStream(), StandardCharsets.UTF_8)) {
+                sqlConfig.setParams(FileCopyUtils.copyToString(reader));
             }
         } catch (IOException e) {
-            log.error("读取文件失败", e);
+            log.error("读取配置文件失败", e);
             sqlConfig.setSql("");
             sqlConfig.setParams("");
         }
@@ -76,11 +78,21 @@ public class ConfigurationService {
 
         // 保存SQL和参数到文件
         if (newConfig.getSql() != null) {
-            File sqlFile = new File(properties.getSql().getFilePath());
-            FileUtils.writeStringToFile(sqlFile, newConfig.getSql().getSql(), StandardCharsets.UTF_8);
+            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
             
-            File paramsFile = new File(properties.getSql().getParamsPath());
-            FileUtils.writeStringToFile(paramsFile, newConfig.getSql().getParams(), StandardCharsets.UTF_8);
+            // 保存SQL文件
+            Resource sqlResource = resolver.getResource(properties.getSql().getFilePath());
+            try (Writer writer = new OutputStreamWriter(
+                    new FileOutputStream(sqlResource.getFile()), StandardCharsets.UTF_8)) {
+                writer.write(newConfig.getSql().getSql());
+            }
+            
+            // 保存参数文件
+            Resource paramsResource = resolver.getResource(properties.getSql().getParamsPath());
+            try (Writer writer = new OutputStreamWriter(
+                    new FileOutputStream(paramsResource.getFile()), StandardCharsets.UTF_8)) {
+                writer.write(newConfig.getSql().getParams());
+            }
         }
     }
 } 

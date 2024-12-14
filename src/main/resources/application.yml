@@ -10,7 +10,7 @@ dbconfig:
   datasources:
     mysql:
       name: MySQL数据库
-      url: jdbc:mysql://10.203.88.206:3306/fs_cia
+      url: jdbc:mysql://10.203.88.206:3306/fs_cia?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&useSSL=false
       driver-class-name: com.mysql.cj.jdbc.Driver
       username: kcia
       password: kcia
@@ -44,9 +44,21 @@ dbconfig:
       driver-class-name: org.duckdb.DuckDBDriver
       username: root
       password: root
+    sqliteInMemory:
+      name: SQLite内存数据库
+      url: "jdbc:sqlite::memory:"
+      driver-class-name: org.sqlite.JDBC
+      username: root
+      password: root
+    duckdbInMemory:
+      name: DuckDB内存数据库
+      url: "jdbc:duckdb::memory:"
+      driver-class-name: org.duckdb.DuckDBDriver
+      username: root
+      password: root
     gaussdb:
       name: GaussDB数据库
-      url: jdbc:postgresql://10.203.88.206:5432/fs_cia
+      url: jdbc:postgresql://10.203.88.206:5432/fs_cia?currentSchema="fs_das"&targetServerType=master&connectTimeout=2&loginTimeout=6
       driver-class-name: com.huawei.gauss.jdbc.Driver
       username: kcia
       password: kcia
@@ -67,5 +79,17 @@ stress:
   duration: 300
   sample-rate: 3
   sql:
-    file-path: "./src/main/resources/sql/test.sql"
-    params-path: "./src/main/resources/sql/params.csv"
+    file-path: classpath:sql/test.sql
+    params-path: classpath:sql/params.csv
+  report: log   # 可选值：log, console
+
+
+jdbc:
+  driver:
+    path: classpath:jdbc/*.jar  # JDBC驱动目录路径，默认为应用根目录下的jdbc文件夹
+
+logging:
+  file:
+    name: logs/spring-boot.log  # 指定日志文件的名称和路径
+  level:
+    root: INFO  # 设置全局日志级别

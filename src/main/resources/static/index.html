@@ -270,6 +270,17 @@
             justify-content: flex-end;
         }
 
+        .log-options-container {
+            flex: 0 0 20%;
+            justify-content: flex-end;
+        }
+        .log-options-container .left-div {
+            flex: 0 0 70%;
+        }   
+        .log-options-container .right-div {
+            flex: 0 0 30%;
+        }
+
         .btn-yellow {
             background-color: #FFCC00;
             color: #000000;
@@ -292,6 +303,37 @@
         .page-header { 
             background: #0dcaf0;
         }
+
+        .log-content {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            max-height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .log-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-content::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+
+        .log-content::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 4px;
+        }
+
+        .log-content::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
     </style>
 </head>
 <body>
@@ -307,6 +349,9 @@
             <li class="nav-item">
                 <a class="nav-link" data-bs-toggle="tab" href="#sqlExecute">SQL执行</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#logs">日志</a>
+            </li>
         </ul>
 
         <div class="tab-content">
@@ -321,9 +366,7 @@
                                         <button id="stopBtn" class="btn btn-danger btn-red" disabled>停止压测</button>
                                         <span id="testStatus" class="badge bg-secondary mb-4" hidden>未开始</span>
                                     </div>
-                                    <div class="right-div">
-                                        <button type="submit" class="btn btn-secondary btn-yellow">保存配置</button>
-                                    </div>
+
                                 </div>
                             </div>
                         </div>
@@ -441,7 +484,9 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
+                                    <div class="right-div">
+                                        <button type="submit" class="btn btn-secondary btn-yellow">保存配置</button>
+                                    </div>
                                 </form>
                             </div>
                         </div>
@@ -482,6 +527,35 @@
                             </div>
                             <div class="card-body sql-result">
                                 <div id="sqlResult"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="logs" class="tab-pane fade">
+                <div class="row mb-4">
+                    <div class="col">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">服务日志</h5>
+                                    <div class="d-flex align-items-center log-options-container container-div">
+                                        <div class="left-div">
+                                            <select id="logLines" class="form-select me-2">
+                                                <option value="100">最后100行</option>
+                                                <option value="1000">最后1000行</option>
+                                                <option value="1000000">全部</option>
+                                            </select>
+                                        </div>
+                                        <div class="right-div">
+                                            <button id="refreshLogs" class="btn btn-primary">查看</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <pre id="logContent" class="log-content"></pre>
                             </div>
                         </div>
                     </div>
@@ -839,6 +913,32 @@
 
         // 页面加载时检查状态
         checkTestStatus();
+
+        // 获取日志内容
+        function fetchLogs() {
+            const lines = document.getElementById('logLines').value;
+            const logContent = document.getElementById('logContent');
+            
+            fetch(`/api/logs?lines=${lines}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        logContent.textContent = result.data.join('\n');
+                        logContent.scrollTop = logContent.scrollHeight;
+                    } else {
+                        logContent.textContent = '获取日志失败: ' + result.error;
+                    }
+                })
+                .catch(error => {
+                    logContent.textContent = '获取日志失败: ' + error.message;
+                });
+        }
+
+        // 绑定查看按钮事件
+        document.getElementById('refreshLogs').onclick = fetchLogs;
+
+        // 切换到日志标签页时自动加载日志
+        document.querySelector('a[href="#logs"]').addEventListener('shown.bs.tab', fetchLogs);
     </script>
 </body>
 </html> 

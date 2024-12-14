@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 @Component
 public class SqlExecutor {
     private NamedParameterJdbcTemplate namedJdbcTemplate;
-    private final DataSourceConfig dataSourceConfig;
+    private final JdbcTemplateManager jdbcTemplateManager;
     
     // SQL类型的正则表达式
     private static final Pattern SELECT_PATTERN = Pattern.compile("^\\s*SELECT\\s+.*$", Pattern.CASE_INSENSITIVE);
@@ -32,13 +32,13 @@ public class SqlExecutor {
 
     private SqlType sqlType;
 
-    public SqlExecutor(DataSourceConfig dataSourceConfig) {
-        this.dataSourceConfig = dataSourceConfig;
+    public SqlExecutor(JdbcTemplateManager jdbcTemplateManager) {
+        this.jdbcTemplateManager = jdbcTemplateManager;
         switchDataSource();
     }
 
     public void switchDataSource() {
-        this.namedJdbcTemplate = dataSourceConfig.createNamedJdbcTemplate();;
+        this.namedJdbcTemplate = jdbcTemplateManager.createNamedJdbcTemplate();;
     }
 
     /**

@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.meigy</groupId>
-    <artifactId>Jstress</artifactId>
+    <artifactId>JdbStress</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>Jstress</name>
-    <description>Jstress</description>
+    <name>JdbStress</name>
+    <description>JdbStress</description>
     <url/>
     <licenses>
         <license/>
@@ -28,6 +28,7 @@
     </scm>
     <properties>
         <java.version>1.8</java.version>
+        <mainClass>com.meigy.jstress.JstressApplication</mainClass>
     </properties>
     <dependencies>
         <dependency>
@@ -116,10 +117,28 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>jdbc/**</exclude>
+                    <exclude>sql/**</exclude>
+                    <exclude>*.xml</exclude>
+                    <exclude>*.yml</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
                     <excludes>
                         <exclude>
@@ -127,10 +146,43 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
-                    <!-- 将依赖打入jar包 -->
                     <includeSystemScope>true</includeSystemScope>
+                    <mainClass>com.meigy.jstress.JstressApplication</mainClass>
+                    <outputDirectory>${project.build.directory}/../dist/lib</outputDirectory>
                 </configuration>
             </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-jar-plugin</artifactId>-->
+<!--                <version>2.4</version>-->
+<!--                <configuration>-->
+<!--                    <archive>-->
+<!--                        &lt;!&ndash; pom.xml和pom.properties文件不打入jar包 &ndash;&gt;-->
+<!--                        <addMavenDescriptor>false</addMavenDescriptor>-->
+<!--                        &lt;!&ndash; 生成MANIFEST.MF的设置 &ndash;&gt;-->
+<!--                        <manifest>-->
+<!--                            &lt;!&ndash; 为依赖包添加路径, 这些路径会写在MANIFEST文件的Class-Path下 &ndash;&gt;-->
+<!--                            <addClasspath>true</addClasspath>-->
+<!--                            <classpathPrefix>.</classpathPrefix>-->
+<!--                            &lt;!&ndash; jar启动入口类 &ndash;&gt;-->
+<!--                            <mainClass>com.meigy.jstress.JstressApplication</mainClass>-->
+<!--                            <useUniqueVersions>false</useUniqueVersions>-->
+<!--                        </manifest>-->
+<!--                        <manifestEntries>-->
+<!--                            &lt;!&ndash; 在Class-Path下添加配置文件的路径 &ndash;&gt;-->
+<!--                            <Class-Path>conf/</Class-Path>-->
+<!--                        </manifestEntries>-->
+<!--                    </archive>-->
+<!--                    &lt;!&ndash; 这里配置不需要打包列表中的配置文件 &ndash;&gt;-->
+<!--                    <excludes>-->
+<!--                        <exclude>jdbc/**</exclude>-->
+<!--                        <exclude>sql/**</exclude>-->
+<!--                        <exclude>**/*.yml</exclude>-->
+<!--                        <exclude>**/*.xml</exclude>-->
+<!--                        <exclude>**/*.yml</exclude>-->
+<!--                    </excludes>-->
+<!--                </configuration>-->
+<!--            </plugin>-->
             <!-- 资源文件处理插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -139,13 +191,13 @@
                 <executions>
                     <!-- 复制SQL和参数文件到jar包同级目录 -->
                     <execution>
-                        <id>copy-resources</id>
+                        <id>copy-resources1</id>
                         <phase>package</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/sql</outputDirectory>
+                            <outputDirectory>${project.build.directory}/../dist/sql</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>src/main/resources/sql</directory>
@@ -154,16 +206,52 @@
                             </resources>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>copy-resources2</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/../dist/jdbc</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/resources/jdbc</directory>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-resources3</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/../dist/conf</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/resources</directory>
+                                    <includes>
+                                        <include>*.xml</include>
+                                        <include>*.yml</include>
+                                    </includes>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
-            <plugin>
+            <!--plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>2.5.5</version>
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.yourpackage.Main</mainClass>
+                            <mainClass>com.meigy.jstress.JstressApplication</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
@@ -179,7 +267,7 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin-->
         </plugins>
     </build>
 

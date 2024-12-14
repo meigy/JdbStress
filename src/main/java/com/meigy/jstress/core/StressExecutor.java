@@ -2,12 +2,10 @@ package com.meigy.jstress.core;
 
 import com.meigy.jstress.config.StressProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 import com.meigy.jstress.report.ConsoleReporter;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -24,7 +22,6 @@ public class StressExecutor {
     private final MetricsCollector metricsCollector;
     private final StressProperties properties;
     private final ConsoleReporter consoleReporter;
-    
     private volatile StressContext currentContext;
 
     public StressExecutor(ThreadPoolTaskExecutor stressTestExecutor,
@@ -39,7 +36,7 @@ public class StressExecutor {
         this.consoleReporter = consoleReporter;
     }
 
-    public void start() throws Exception {
+    public void start() {
         if (currentContext != null && currentContext.isRunning()) {
             log.warn("压测已在运行中");
             return;
@@ -48,8 +45,9 @@ public class StressExecutor {
         String taskId = String.valueOf(System.currentTimeMillis());
         
         // 加载SQL和参数
-        sqlLoader.loadSql(properties.getSql().getFilePath());
-        sqlLoader.loadParams(properties.getSql().getParamsPath());
+        //sqlLoader.loadSql(properties.getSql().getFilePath());
+        //sqlLoader.loadParams(properties.getSql().getParamsPath());
+        sqlLoader.analyzeSql();
         sqlLoader.switchDataSource();
         
         List<Future<?>> taskFutures = new ArrayList<>();

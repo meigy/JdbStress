@@ -1,13 +1,12 @@
 package com.meigy.jstress.config;
 
 import com.alibaba.druid.pool.DruidDataSource;
+import com.meigy.jstress.core.JdbcDriverLoader;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import javax.sql.DataSource;
+
+import javax.annotation.PostConstruct;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,43 +16,42 @@ public class DataSourceConfig {
     
     private final DataSourceProperties dataSourceProperties;
     private final Map<String, DruidDataSource> dataSourceMap = new ConcurrentHashMap<>();
-    private final Map<String, JdbcTemplate> jdbcTemplateMap = new ConcurrentHashMap<>();
+    //private final Map<String, JdbcTemplate> jdbcTemplateMap = new ConcurrentHashMap<>();
+    private final JdbcDriverLoader jdbcDriverLoader;
     
     @Value("${spring.datasource.active}")
     private String activeDataSource;
 
-    public DataSourceConfig(DataSourceProperties dataSourceProperties) {
+    public DataSourceConfig(DataSourceProperties dataSourceProperties, JdbcDriverLoader jdbcDriverLoader) {
         this.dataSourceProperties = dataSourceProperties;
+        this.jdbcDriverLoader = jdbcDriverLoader;
     }
 
-    @Bean
-    public JdbcTemplate jdbcTemplate() {
-        return createJdbcTemplate(activeDataSource);
-    }
+     @PostConstruct
+     public void init() {
+         // 确保在创建数据源之前加载所有驱动
+         jdbcDriverLoader.loadDrivers();
+     }
 
-    @Bean
-    public NamedParameterJdbcTemplate namedJdbcTemplate() {
-        return createNamedJdbcTemplate();
-    }
+    // @Bean
+    // public JdbcTemplate jdbcTemplate() {
+    //     return createJdbcTemplate(activeDataSource);
+    // }
 
-    public NamedParameterJdbcTemplate createNamedJdbcTemplate() {
-        return new NamedParameterJdbcTemplate(createJdbcTemplate(activeDataSource));
-    }
+    // @Bean
+    // public NamedParameterJdbcTemplate namedJdbcTemplate() {
+    //     return createNamedJdbcTemplate();
+    // }
 
-    public JdbcTemplate switchDataSource(String dataSourceName) {
+
+    public void switchDataSource(String dataSourceName) {
         if (!dataSourceProperties.getDatasources().containsKey(dataSourceName)) {
             throw new IllegalArgumentException("数据源不存在: " + dataSourceName);
         }
         activeDataSource = dataSourceName;
-        return createJdbcTemplate(dataSourceName);
+        //return createJdbcTemplate(dataSourceName);
     }
 
-    private JdbcTemplate createJdbcTemplate(String dataSourceName) {
-        return jdbcTemplateMap.computeIfAbsent(dataSourceName, key -> {
-            DruidDataSource dataSource = createDataSource(key);
-            return new JdbcTemplate(dataSource);
-        });
-    }
 
     private DruidDataSource createDataSource(String dataSourceName) {
         return dataSourceMap.computeIfAbsent(dataSourceName, key -> {
@@ -76,11 +74,15 @@ public class DataSourceConfig {
         return dataSourceProperties.getDatasources();
     }
 
-    public String getActiveDataSource() {
+    public String getActiveDataSourceName() {
         return activeDataSource;
     }
 
-    public JdbcTemplate getJdbcTemplate() {
-        return createJdbcTemplate(activeDataSource);
+    public DruidDataSource getActiveDataSource() {
+        return createDataSource(activeDataSource);
+    }
+
+    public DruidDataSource getDataSource(String dataSourceName) {
+        return createDataSource(dataSourceName);
     }
 } 

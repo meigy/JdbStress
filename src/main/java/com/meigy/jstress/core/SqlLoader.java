@@ -1,15 +1,20 @@
 package com.meigy.jstress.core;
 
+import com.meigy.jstress.config.StressProperties;
 import com.opencsv.CSVReader;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
+import org.springframework.util.FileCopyUtils;
 
-import java.io.FileReader;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.annotation.PostConstruct;
 
 @Slf4j
 @Component
@@ -18,25 +23,50 @@ public class SqlLoader {
     private String sql;
     private List<String[]> params;
     private final AtomicInteger currentParamIndex = new AtomicInteger(0);
-
-    public SqlLoader(SqlExecutor sqlExecutor) {
+    private StressProperties properties;
+    
+    public SqlLoader(SqlExecutor sqlExecutor,StressProperties properties) {
         this.sqlExecutor = sqlExecutor;
+        this.properties = properties;
+    }
+
+    @PostConstruct
+    public void init() {
+        try {
+            loadSql(properties.getSql().getFilePath());
+            loadParams(properties.getSql().getParamsPath());
+            analyzeSql();
+        } catch (Exception e) {
+            log.error("初始化SQL加载器失败", e);
+        }
     }
 
     public void loadSql(String sqlPath) throws Exception {
-        byte[] bytes = Files.readAllBytes(Paths.get(sqlPath));
-        this.sql = new String(bytes, StandardCharsets.UTF_8);
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        Resource resource = resolver.getResource(sqlPath);
+        
+        try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
+            sql = FileCopyUtils.copyToString(reader);
+        }
+        
         if (sql == null || sql.isEmpty()) {
             throw new IllegalArgumentException("SQL文件为空");
         }
-        // 加载时就分析SQL类型
-        sqlExecutor.analyzeSql(sql);
+        
     }
 
     public void loadParams(String paramsPath) throws Exception {
-        try (CSVReader reader = new CSVReader(new FileReader(paramsPath))) {
-            params = reader.readAll();
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        Resource resource = resolver.getResource(paramsPath);
+        
+        try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
+             CSVReader csvReader = new CSVReader(reader)) {
+            params = csvReader.readAll();
         }
+    }
+
+    public void analyzeSql() {
+        sqlExecutor.analyzeSql(sql);
     }
 
     public void executeSql() {
@@ -54,5 +84,9 @@ public class SqlLoader {
         }
         int index = currentParamIndex.getAndIncrement() % params.size();
         return params.get(index);
+    }
+
+    public String getSql() {
+        return sql;
     }
 } 
