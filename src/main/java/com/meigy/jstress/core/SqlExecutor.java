@@ -9,6 +9,7 @@ import com.meigy.jstress.config.DataSourceConfig;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -64,6 +65,9 @@ public class SqlExecutor {
      */
     public void execute(String sql, String[] params) {
         try {
+            if (params.length == 0) {
+                sql = preProcessSql(sql);
+            }
             MapSqlParameterSource paramSource = createParamSource(params);
             switch (sqlType) {
                 case QUERY:
@@ -91,8 +95,18 @@ public class SqlExecutor {
             for (int i = 0; i < params.length; i++) {
                 paramSource.addValue("p" + (i + 1), params[i]);
             }
+            // 添加时间戳参数
+            paramSource.addValue("pt", System.currentTimeMillis());
+            // 添加随机数参数
+            paramSource.addValue("pr", new Random().nextInt());
         }
         return paramSource;
+    }
+
+    private String preProcessSql(String sql) {
+        String result = sql.replaceAll(":pt", String.valueOf(System.currentTimeMillis()));
+        result = sql.replaceAll(":pr", String.valueOf(new Random().nextInt()));
+        return result;
     }
 
     private void executeQuery(String sql, MapSqlParameterSource params) {

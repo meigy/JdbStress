@@ -41,6 +41,10 @@ public class SqlLoader {
         }
     }
 
+    public void reLoad() {
+        init();
+    }
+
     public void loadSql(String sqlPath) throws Exception {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource resource = resolver.getResource(sqlPath);

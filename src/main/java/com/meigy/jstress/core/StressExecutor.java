@@ -47,7 +47,7 @@ public class StressExecutor {
         // 加载SQL和参数
         //sqlLoader.loadSql(properties.getSql().getFilePath());
         //sqlLoader.loadParams(properties.getSql().getParamsPath());
-        sqlLoader.analyzeSql();
+        sqlLoader.reLoad();
         sqlLoader.switchDataSource();
         
         List<Future<?>> taskFutures = new ArrayList<>();
