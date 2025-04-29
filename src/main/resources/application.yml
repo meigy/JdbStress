@@ -34,7 +34,7 @@ dbconfig:
       password: oracle
     sqlite:
       name: SQLite数据库
-      url: jdbc:sqlite:test.db
+      url: jdbc:sqlite:test.db?cache_size=5000000&journal_mode=WAL
       driver-class-name: org.sqlite.JDBC
       username: root
       password: root
@@ -86,7 +86,7 @@ stress:
 
 jdbc:
   driver:
-    path: classpath:jdbc/*.jar  # JDBC驱动目录路径，默认为应用根目录下的jdbc文件夹
+    path: classpath*:jdbc/*.jar  # JDBC驱动目录路径，默认为应用根目录下的jdbc文件夹
 
 logging:
   file:
