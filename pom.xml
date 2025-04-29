@@ -124,8 +124,9 @@
                     <exclude>jdbc/**</exclude>
                     <exclude>sql/**</exclude>
                     <exclude>*.xml</exclude>
-                    <exclude>*.yml</exclude>
+                    <!--exclude>*.yml</exclude-->
                 </excludes>
+                <filtering>false</filtering>
             </resource>
         </resources>
         <plugins>
