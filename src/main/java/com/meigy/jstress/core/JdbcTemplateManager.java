@@ -31,8 +31,9 @@ public class JdbcTemplateManager {
         });
     }
 
-    public NamedParameterJdbcTemplate createNamedJdbcTemplate() {
-        return new NamedParameterJdbcTemplate(createJdbcTemplate(dataSourceConfig.getActiveDataSourceName()));
+    public NamedParameterJdbcTemplate createNewNamedJdbcTemplate() {
+        DruidDataSource dataSource = dataSourceConfig.getDataSource(dataSourceConfig.getActiveDataSourceName());
+        return new NamedParameterJdbcTemplate(new JdbcTemplate(dataSource));
     }
 
     public JdbcTemplate getJdbcTemplate(String dataSourceName) {

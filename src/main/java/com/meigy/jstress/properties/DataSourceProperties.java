@@ -1,4 +1,4 @@
-package com.meigy.jstress.config;
+package com.meigy.jstress.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

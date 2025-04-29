@@ -3,6 +3,8 @@ package com.meigy.jstress.report;
 import com.meigy.jstress.config.DataSourceConfig;
 import com.meigy.jstress.core.MetricsCollector;
 import com.meigy.jstress.core.SqlLoader;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -13,22 +15,26 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-@Component
+//@Component
 @Slf4j
+@Getter
+@Setter
 public class ConsoleReporter {
     private final MetricsCollector metricsCollector;
     private final SimpleDateFormat dateFormat;
     private final DataSourceConfig dataSourceConfig;
-    private final SqlLoader sqlLoader;
+    //private final SqlLoader sqlLoader;
     private ScheduledExecutorService scheduler;
 
     @Value("stress.report:console")
     private String reportType;
 
-    public ConsoleReporter(MetricsCollector metricsCollector, DataSourceConfig dataSourceConfig, SqlLoader sqlLoader) {
+    private String sql;
+
+    public ConsoleReporter(MetricsCollector metricsCollector, DataSourceConfig dataSourceConfig/*, SqlLoader sqlLoader*/) {
         this.metricsCollector = metricsCollector;
         this.dataSourceConfig = dataSourceConfig;
-        this.sqlLoader = sqlLoader;
+        //this.sqlLoader = sqlLoader;
         this.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     }
 
@@ -58,7 +64,7 @@ public class ConsoleReporter {
         StringBuilder report = new StringBuilder("\n");
         report.append("=========================== 压测报告 ===========================\n");
         report.append("连接: ").append(dataSourceConfig.getActiveDataSourceName()).append("\n");
-        report.append("SQL : ").append(sqlLoader.getSql().replace('\n',' ')).append("\n");
+        report.append("SQL : ").append(sql.replace('\n',' ')).append("\n");
         report.append("时间: ").append(dateFormat.format(new Date())).append("\n");
         report.append("-----------------------------------------------------------\n");
         report.append(String.format("总请求数: %d\n", metricsCollector.getTotalRequests().sum()));

@@ -3,9 +3,6 @@ package com.meigy.jstress.core;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.stereotype.Component;
-
-import com.meigy.jstress.config.DataSourceConfig;
 
 import java.util.List;
 import java.util.Map;
@@ -13,7 +10,7 @@ import java.util.Random;
 import java.util.regex.Pattern;
 
 @Slf4j
-@Component
+//@Component
 public class SqlExecutor {
     private NamedParameterJdbcTemplate namedJdbcTemplate;
     private final JdbcTemplateManager jdbcTemplateManager;
@@ -39,7 +36,7 @@ public class SqlExecutor {
     }
 
     public void switchDataSource() {
-        this.namedJdbcTemplate = jdbcTemplateManager.createNamedJdbcTemplate();;
+        this.namedJdbcTemplate = jdbcTemplateManager.createNewNamedJdbcTemplate();;
     }
 
     /**

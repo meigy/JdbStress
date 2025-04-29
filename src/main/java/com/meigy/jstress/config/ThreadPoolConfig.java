@@ -1,5 +1,6 @@
 package com.meigy.jstress.config;
 
+import com.meigy.jstress.properties.StressProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;

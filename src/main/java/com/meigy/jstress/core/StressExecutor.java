@@ -1,6 +1,7 @@
 package com.meigy.jstress.core;
 
-import com.meigy.jstress.config.StressProperties;
+import com.meigy.jstress.config.DataSourceConfig;
+import com.meigy.jstress.properties.StressProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
@@ -18,22 +19,27 @@ import org.springframework.web.bind.annotation.PostMapping;
 @Component
 public class StressExecutor {
     private final ThreadPoolTaskExecutor executor;
-    private final SqlLoader sqlLoader;
+    //private final SqlLoader sqlLoader;
     private final MetricsCollector metricsCollector;
     private final StressProperties properties;
     private final ConsoleReporter consoleReporter;
     private volatile StressContext currentContext;
 
+    private final JdbcTemplateManager jdbcTemplateManager;
+
     public StressExecutor(ThreadPoolTaskExecutor stressTestExecutor,
-                         SqlLoader sqlLoader,
+                         //SqlLoader sqlLoader,
+                         JdbcTemplateManager jdbcTemplateManager,
                          MetricsCollector metricsCollector,
                          StressProperties properties,
-                         ConsoleReporter consoleReporter) {
+                         //ConsoleReporter consoleReporter) {
+                         DataSourceConfig dataSourceConfig) {
         this.executor = stressTestExecutor;
-        this.sqlLoader = sqlLoader;
+        this.jdbcTemplateManager = jdbcTemplateManager;
+        //this.sqlLoader = new SqlLoader(jdbcTemplateManager, properties);
         this.metricsCollector = metricsCollector;
         this.properties = properties;
-        this.consoleReporter = consoleReporter;
+        this.consoleReporter = new ConsoleReporter(metricsCollector, dataSourceConfig);
     }
 
     public void start() {
@@ -47,8 +53,8 @@ public class StressExecutor {
         // 加载SQL和参数
         //sqlLoader.loadSql(properties.getSql().getFilePath());
         //sqlLoader.loadParams(properties.getSql().getParamsPath());
-        sqlLoader.reLoad();
-        sqlLoader.switchDataSource();
+        //sqlLoader.reLoad();
+        //sqlLoader.switchDataSource();
         
         List<Future<?>> taskFutures = new ArrayList<>();
 
@@ -69,6 +75,7 @@ public class StressExecutor {
             taskFutures.add(future);
         }
 
+        consoleReporter.setSql(new SqlLoader(jdbcTemplateManager, properties).getSql());
         // 启动控制台报告
         consoleReporter.start(properties.getSampleRate());
     }
@@ -83,6 +90,11 @@ public class StressExecutor {
     }
 
     private class StressTask implements Runnable {
+        private final SqlLoader sqlLoader = new SqlLoader(jdbcTemplateManager, properties);
+        StressTask() {
+            sqlLoader.reLoad();
+            sqlLoader.switchDataSource();
+        }
         @Override
         public void run() {
             while (currentContext != null && currentContext.isRunning()) {

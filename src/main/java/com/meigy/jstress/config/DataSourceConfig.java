@@ -2,6 +2,7 @@ package com.meigy.jstress.config;
 
 import com.alibaba.druid.pool.DruidDataSource;
 import com.meigy.jstress.core.JdbcDriverLoader;
+import com.meigy.jstress.properties.DataSourceProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -30,7 +31,7 @@ public class DataSourceConfig {
      @PostConstruct
      public void init() {
          // 确保在创建数据源之前加载所有驱动
-         jdbcDriverLoader.loadDrivers();
+         //jdbcDriverLoader.loadDrivers();
      }
 
     // @Bean

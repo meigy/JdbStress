@@ -1,6 +1,6 @@
 package com.meigy.jstress.core;
 
-import com.meigy.jstress.config.StressProperties;
+import com.meigy.jstress.properties.StressProperties;
 import com.opencsv.CSVReader;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.PostConstruct;
 
 @Slf4j
-@Component
+//@Component
 public class SqlLoader {
     private final SqlExecutor sqlExecutor;
     private String sql;
@@ -25,12 +25,13 @@ public class SqlLoader {
     private final AtomicInteger currentParamIndex = new AtomicInteger(0);
     private StressProperties properties;
     
-    public SqlLoader(SqlExecutor sqlExecutor,StressProperties properties) {
-        this.sqlExecutor = sqlExecutor;
+    public SqlLoader(JdbcTemplateManager jdbcTemplateManager,StressProperties properties) {
+        this.sqlExecutor = new SqlExecutor(jdbcTemplateManager);
         this.properties = properties;
+        this.init();
     }
 
-    @PostConstruct
+    //@PostConstruct
     public void init() {
         try {
             loadSql(properties.getSql().getFilePath());

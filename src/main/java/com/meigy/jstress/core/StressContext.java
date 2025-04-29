@@ -4,7 +4,7 @@ import lombok.Data;
 import java.util.List;
 import java.util.concurrent.Future;
 
-import com.meigy.jstress.config.StressProperties;
+import com.meigy.jstress.properties.StressProperties;
 
 @Data
 public class StressContext {

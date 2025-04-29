@@ -16,7 +16,7 @@ import java.util.List;
 @Component
 public class JdbcDriverLoader {
 
-    @Value("${jdbc.driver.path}")
+    @Value("${jdbc.driver.path:classpath*:jdbc/*.jar}")
     private String jdbcDriverPath;
 
     @PostConstruct

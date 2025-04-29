@@ -1,6 +1,6 @@
 package com.meigy.jstress.service;
 
-import com.meigy.jstress.config.StressProperties;
+import com.meigy.jstress.properties.StressProperties;
 import com.meigy.jstress.model.StressTestConfig;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
