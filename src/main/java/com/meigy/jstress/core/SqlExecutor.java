@@ -1,6 +1,8 @@
 package com.meigy.jstress.core;
 
+import com.meigy.jstress.types.SqlType;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RegExUtils;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 
@@ -16,54 +18,60 @@ public class SqlExecutor {
     private final JdbcTemplateManager jdbcTemplateManager;
     
     // SQL类型的正则表达式
-    private static final Pattern SELECT_PATTERN = Pattern.compile("^\\s*SELECT\\s+.*$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern UPDATE_PATTERN = Pattern.compile("^\\s*(UPDATE|INSERT|DELETE)\\s+.*$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern CALL_PATTERN = Pattern.compile("^\\s*(CALL|EXEC)\\s+.*$", Pattern.CASE_INSENSITIVE);
+//    private static final Pattern SELECT_PATTERN = Pattern.compile("^\\s*SELECT\\s+.*$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+//    private static final Pattern UPDATE_PATTERN = Pattern.compile("^\\s*(UPDATE|INSERT|DELETE)\\s+.*$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+//    private static final Pattern CALL_PATTERN = Pattern.compile("^\\s*(CALL|EXEC)\\s+.*$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+    private volatile long executeCounter = 0;
     
     // SQL类型枚举
-    public enum SqlType {
-        QUERY,      // SELECT
-        UPDATE,     // INSERT, UPDATE, DELETE
-        CALL,       // 存储过程
-        EXECUTE     // 其他
+
+    public static SqlExecutor getInstance(String dataSourceName) {
+        SqlExecutor executor = new SqlExecutor();
+        executor.switchDataSource(dataSourceName);
+        return executor;
     }
 
-    private SqlType sqlType;
-
-    public SqlExecutor(JdbcTemplateManager jdbcTemplateManager) {
+    public SqlExecutor() {
+        UserContext userContext = AppContextHolder.getBean(UserContext.class);
+        JdbcTemplateManager jdbcTemplateManager = AppContextHolder.getBean(JdbcTemplateManager.class);
         this.jdbcTemplateManager = jdbcTemplateManager;
-        switchDataSource();
+        this.namedJdbcTemplate = userContext.getActiveNamedJdbcTemplate();
     }
 
-    public void switchDataSource() {
-        this.namedJdbcTemplate = jdbcTemplateManager.createNewNamedJdbcTemplate();;
+    private void switchDataSource(String dataSourceName) {
+        this.namedJdbcTemplate = jdbcTemplateManager.getNamedJdbcTemplate(dataSourceName);;
     }
 
     /**
      * 分析SQL类型
      */
-    public void analyzeSql(String sql) {
-        if (SELECT_PATTERN.matcher(sql).matches()) {
-            sqlType = SqlType.QUERY;
-        } else if (UPDATE_PATTERN.matcher(sql).matches()) {
-            sqlType = SqlType.UPDATE;
-        } else if (CALL_PATTERN.matcher(sql).matches()) {
-            sqlType = SqlType.CALL;
-        } else {
-            sqlType = SqlType.EXECUTE;
-        }
-        log.info("SQL类型识别为: {}", sqlType);
-    }
+//    public void analyzeSql(String sql) {
+//        String upperSql = sql.trim().toUpperCase();
+//        if (SELECT_PATTERN.matcher(upperSql).matches()) {
+//            sqlType = SqlType.QUERY;
+//        } else if (UPDATE_PATTERN.matcher(upperSql).matches()) {
+//            sqlType = SqlType.UPDATE;
+//        } else if (CALL_PATTERN.matcher(upperSql).matches()) {
+//            sqlType = SqlType.CALL;
+//        } else {
+//            sqlType = SqlType.EXECUTE;
+//        }
+//        log.info("SQL类型识别为: {}", sqlType);
+//    }
 
     /**
      * 执行SQL
      * @param sql 包含命名参数的SQL（如:p1, :p2）
      * @param params 参数值数组
      */
-    public void execute(String sql, String[] params) {
+    public void execute(String sql, String[] params, SqlType sqlType) {
         try {
-            if (params.length == 0) {
-                sql = preProcessSql(sql);
+            //if (params.length == 0) {
+            //    sql = preProcessSql(sql);
+            //}
+            if (executeCounter++ % 1000 == 0) {
+                log.info(sql);
             }
             MapSqlParameterSource paramSource = createParamSource(params);
             switch (sqlType) {
@@ -93,16 +101,24 @@ public class SqlExecutor {
                 paramSource.addValue("p" + (i + 1), params[i]);
             }
             // 添加时间戳参数
-            paramSource.addValue("pt", System.currentTimeMillis());
+            //paramSource.addValue("pt", System.currentTimeMillis());
             // 添加随机数参数
-            paramSource.addValue("pr", new Random().nextInt());
+            //paramSource.addValue("pr", new Random().nextInt());
         }
         return paramSource;
     }
 
     private String preProcessSql(String sql) {
-        String result = sql.replaceAll(":pt", String.valueOf(System.currentTimeMillis()));
-        result = sql.replaceAll(":pr", String.valueOf(new Random().nextInt()));
+        String result = sql;
+//        if (result.contains(":pt")) {
+//            result = result.replaceAll(":pt", String.valueOf(System.currentTimeMillis()));
+//        }
+//        //获取result字符串中满足:pr\d+的部分
+//
+//        if (result.contains(":pr")) {
+//
+//        }
+//        result = result.replaceAll(":pr", String.valueOf(new Random().nextInt()));
         return result;
     }
 

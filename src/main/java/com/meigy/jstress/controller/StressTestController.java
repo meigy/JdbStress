@@ -1,8 +1,8 @@
 package com.meigy.jstress.controller;
 
+import com.meigy.jstress.core.UserContext;
 import com.meigy.jstress.model.StressTestConfig;
 import com.meigy.jstress.service.ConfigurationService;
-import com.meigy.jstress.config.DataSourceConfig;
 import com.meigy.jstress.service.StressService;
 import com.meigy.jstress.model.MetricsResponse;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +20,7 @@ public class StressTestController {
     @Resource
     private  ConfigurationService configurationService;
     @Resource
-    private DataSourceConfig dataSourceConfig;
+    private UserContext userContext;
 
     @PostMapping("/start")
     public void start() throws Exception {
@@ -60,7 +60,7 @@ public class StressTestController {
         if (stressService.getExecutor().isRunning()) {
             throw new IllegalStateException("压测运行中不能切换数据源");
         }
-        dataSourceConfig.switchDataSource(name);
+        userContext.setDatasourceName(name);
     }
 
     @PostMapping("/execute-sql")

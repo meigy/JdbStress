@@ -1,13 +1,13 @@
 package com.meigy.jstress.report;
 
-import com.meigy.jstress.config.DataSourceConfig;
+import com.meigy.jstress.core.AppContextHolder;
+import com.meigy.jstress.core.DataSourceManager;
 import com.meigy.jstress.core.MetricsCollector;
-import com.meigy.jstress.core.SqlLoader;
+import com.meigy.jstress.core.UserContext;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -22,18 +22,21 @@ import java.util.concurrent.TimeUnit;
 public class ConsoleReporter {
     private final MetricsCollector metricsCollector;
     private final SimpleDateFormat dateFormat;
-    private final DataSourceConfig dataSourceConfig;
-    //private final SqlLoader sqlLoader;
+    private final DataSourceManager dataSourceManager;
+    //private final SqlGenerator sqlLoader;
     private ScheduledExecutorService scheduler;
+
+    private UserContext userContext;
 
     @Value("stress.report:console")
     private String reportType;
 
     private String sql;
 
-    public ConsoleReporter(MetricsCollector metricsCollector, DataSourceConfig dataSourceConfig/*, SqlLoader sqlLoader*/) {
-        this.metricsCollector = metricsCollector;
-        this.dataSourceConfig = dataSourceConfig;
+    public ConsoleReporter() { //(MetricsCollector metricsCollector, DataSourceManager dataSourceManager/*, SqlGenerator sqlLoader*/, UserContext userContext) {
+        this.metricsCollector = AppContextHolder.getBean(MetricsCollector.class);
+        this.dataSourceManager = AppContextHolder.getBean(DataSourceManager.class);
+        this.userContext = AppContextHolder.getBean(UserContext.class);
         //this.sqlLoader = sqlLoader;
         this.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     }
@@ -63,7 +66,7 @@ public class ConsoleReporter {
     private void report() {
         StringBuilder report = new StringBuilder("\n");
         report.append("=========================== 压测报告 ===========================\n");
-        report.append("连接: ").append(dataSourceConfig.getActiveDataSourceName()).append("\n");
+        report.append("连接: ").append(userContext.getDatasourceName()).append("\n");
         report.append("SQL : ").append(sql.replace('\n',' ')).append("\n");
         report.append("时间: ").append(dateFormat.format(new Date())).append("\n");
         report.append("-----------------------------------------------------------\n");

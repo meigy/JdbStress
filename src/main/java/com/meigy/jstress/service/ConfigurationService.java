@@ -1,7 +1,9 @@
 package com.meigy.jstress.service;
 
+import com.meigy.jstress.core.UserContext;
 import com.meigy.jstress.properties.StressProperties;
 import com.meigy.jstress.model.StressTestConfig;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
@@ -16,15 +18,19 @@ import java.nio.charset.StandardCharsets;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.util.List;
 
 @Service
 public class ConfigurationService {
-    private final StressProperties properties;
     private static final Logger log = LoggerFactory.getLogger(ConfigurationService.class);
+    @Autowired
+    private StressProperties properties;
+    @Autowired
+    private UserContext userContext;
 
-    public ConfigurationService(StressProperties properties) {
-        this.properties = properties;
-    }
+    //public ConfigurationService(StressProperties properties) {
+    //    this.properties = properties;
+    //}
 
     public StressTestConfig getCurrentConfig() {
         StressTestConfig config = new StressTestConfig();
@@ -39,7 +45,7 @@ public class ConfigurationService {
         // 复制其他配置
         config.setDuration(properties.getDuration());
         config.setSampleRate(properties.getSampleRate());
-
+        /*
         // 加载SQL配置
         StressTestConfig.SqlConfig sqlConfig = new StressTestConfig.SqlConfig();
         try {
@@ -61,6 +67,14 @@ public class ConfigurationService {
             sqlConfig.setSql("");
             sqlConfig.setParams("");
         }
+        */
+        StressTestConfig.SqlConfig sqlConfig = new StressTestConfig.SqlConfig();
+        sqlConfig.setSql(userContext.getStressSqlTemplate());
+        String sqlParams = "";
+        for (String[] param : userContext.getStressSqlParams()) {
+            sqlParams += String.join(",", param) + "\n";
+        }
+        sqlConfig.setParams(sqlParams);
         config.setSql(sqlConfig);
 
         return config;
@@ -86,6 +100,7 @@ public class ConfigurationService {
                     new FileOutputStream(sqlResource.getFile()), StandardCharsets.UTF_8)) {
                 writer.write(newConfig.getSql().getSql());
             }
+            userContext.setStressSqlTemplate(newConfig.getSql().getSql());
             
             // 保存参数文件
             Resource paramsResource = resolver.getResource(properties.getSql().getParamsPath());
@@ -93,6 +108,15 @@ public class ConfigurationService {
                     new FileOutputStream(paramsResource.getFile()), StandardCharsets.UTF_8)) {
                 writer.write(newConfig.getSql().getParams());
             }
+            List<String[]> paramsList = new java.util.ArrayList<>();
+            String[] lines = newConfig.getSql().getParams().split("\\r?\\n");
+            for (String line : lines) {
+                if (!line.trim().isEmpty()) {
+                    paramsList.add(line.split(","));
+                }
+            }
+            userContext.setStressSqlParams(paramsList);
         }
+
     }
 } 

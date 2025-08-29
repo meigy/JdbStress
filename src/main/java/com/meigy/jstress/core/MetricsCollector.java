@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
-@Component
+//@Component
 @Data
 public class MetricsCollector {
     private final LongAdder totalRequests = new LongAdder();

@@ -6,7 +6,7 @@ spring:
     # 当前激活的数据源
     active: mysql
 
-dbconfig:
+jdbc:
   datasources:
     mysql:
       name: MySQL数据库
@@ -58,10 +58,13 @@ dbconfig:
       password: root
     gaussdb:
       name: GaussDB数据库
-      url: jdbc:postgresql://10.203.88.206:5432/fs_cia?currentSchema="fs_das"&targetServerType=master&connectTimeout=2&loginTimeout=6
-      driver-class-name: com.huawei.gauss.jdbc.Driver
-      username: kcia
-      password: kcia
+      #driver-class-name: com.huawei.gauss.jdbc.Driver
+      driver-class-name: org.postgresql.Driver
+      url: jdbc:postgresql://127.0.0.1:30100/fs_cia_dev?currentSchema=fs_cia_dev_user&targetServerType=master&socketTimeout=30000&connectTimeout=10000&loginTimeout=10000
+      username: abc
+      password: 123
+  driver:
+    path: classpath*:jdbc/*.jar  # JDBC驱动目录路径，默认为应用根目录下的jdbc文件夹
 
 # Druid连接池配置
 druid:
@@ -74,8 +77,8 @@ druid:
 stress:
   thread-pool:
     core-size: 10
-    max-size: 20
-    queue-capacity: 100
+    max-size: 32
+    queue-capacity: 1000000
   duration: 300
   sample-rate: 3
   sql:
@@ -84,12 +87,8 @@ stress:
   report: log   # 可选值：log, console
 
 
-jdbc:
-  driver:
-    path: classpath*:jdbc/*.jar  # JDBC驱动目录路径，默认为应用根目录下的jdbc文件夹
-
 logging:
   file:
     name: logs/spring-boot.log  # 指定日志文件的名称和路径
-  level:
-    root: INFO  # 设置全局日志级别
+#  level:
+#    root: INFO  # 设置全局日志级别

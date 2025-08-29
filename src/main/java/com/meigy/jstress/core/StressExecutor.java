@@ -1,6 +1,5 @@
 package com.meigy.jstress.core;
 
-import com.meigy.jstress.config.DataSourceConfig;
 import com.meigy.jstress.properties.StressProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -16,34 +15,40 @@ import java.util.concurrent.Future;
 import org.springframework.web.bind.annotation.PostMapping;
 
 @Slf4j
-@Component
+//@Component
 public class StressExecutor {
-    private final ThreadPoolTaskExecutor executor;
-    //private final SqlLoader sqlLoader;
+    private ThreadPoolTaskExecutor executor;
+    //private final SqlGenerator sqlGenerator;
     private final MetricsCollector metricsCollector;
     private final StressProperties properties;
     private final ConsoleReporter consoleReporter;
-    private volatile StressContext currentContext;
+    private volatile StressContext stressContext;
 
-    private final JdbcTemplateManager jdbcTemplateManager;
+    //private final JdbcTemplateManager jdbcTemplateManager;
 
-    public StressExecutor(ThreadPoolTaskExecutor stressTestExecutor,
-                         //SqlLoader sqlLoader,
-                         JdbcTemplateManager jdbcTemplateManager,
-                         MetricsCollector metricsCollector,
-                         StressProperties properties,
-                         //ConsoleReporter consoleReporter) {
-                         DataSourceConfig dataSourceConfig) {
-        this.executor = stressTestExecutor;
-        this.jdbcTemplateManager = jdbcTemplateManager;
-        //this.sqlLoader = new SqlLoader(jdbcTemplateManager, properties);
-        this.metricsCollector = metricsCollector;
+    public StressExecutor(StressProperties properties, MetricsCollector metricsCollector, ThreadPoolTaskExecutor defaultExecutor) {
+        //DataSourceManager dataSourceManager = AppContextHolder.getBean(DataSourceManager.class);
         this.properties = properties;
-        this.consoleReporter = new ConsoleReporter(metricsCollector, dataSourceConfig);
+        this.metricsCollector = metricsCollector;
+        this.consoleReporter = new ConsoleReporter();
+        init(defaultExecutor);
+    }
+
+    public void init(ThreadPoolTaskExecutor stressTestExecutor) {
+                         //SqlGenerator sqlGenerator,
+                         //JdbcTemplateManager jdbcTemplateManager,
+                         //MetricsCollector metricsCollector,
+                         //StressProperties properties,
+                         //ConsoleReporter consoleReporter) {
+                         //DataSourceManager dataSourceManager) {
+        this.executor = stressTestExecutor;
+        //this.jdbcTemplateManager = jdbcTemplateManager;
+        //this.sqlGenerator = new SqlGenerator(jdbcTemplateManager, properties);
+        //this.metricsCollector = metricsCollector;
     }
 
     public void start() {
-        if (currentContext != null && currentContext.isRunning()) {
+        if (stressContext != null && stressContext.isRunning()) {
             log.warn("压测已在运行中");
             return;
         }
@@ -51,10 +56,10 @@ public class StressExecutor {
         String taskId = String.valueOf(System.currentTimeMillis());
         
         // 加载SQL和参数
-        //sqlLoader.loadSql(properties.getSql().getFilePath());
-        //sqlLoader.loadParams(properties.getSql().getParamsPath());
-        //sqlLoader.reLoad();
-        //sqlLoader.switchDataSource();
+        //sqlGenerator.loadSql(properties.getSql().getFilePath());
+        //sqlGenerator.loadParams(properties.getSql().getParamsPath());
+        //sqlGenerator.reLoad();
+        //sqlGenerator.switchDataSource();
         
         List<Future<?>> taskFutures = new ArrayList<>();
 
@@ -66,41 +71,47 @@ public class StressExecutor {
         }
 
         // 创建上下文
-        currentContext = new StressContext(taskId, metricsCollector, properties, taskFutures, autoStopThread);
+        stressContext = new StressContext(taskId, metricsCollector, properties, taskFutures, autoStopThread);
+        SqlGenerator sqlGenerator = new SqlGenerator();
+        UserContext userContext = AppContextHolder.getBean(UserContext.class);
+        sqlGenerator.switchDataSource(userContext.getDatasourceName());
         
         // 启动工作线程
-        int threadCount = properties.getThreadPool().getCoreSize();
+        log.warn("压测开始，线程数: {}" , properties.getThreadPool().getMaxSize());
+        int threadCount = properties.getThreadPool().getMaxSize();
         for (int i = 0; i < threadCount; i++) {
-            Future<?> future = executor.submit(new StressTask());
+            Future<?> future = executor.submit(new StressTask(sqlGenerator));
             taskFutures.add(future);
         }
 
-        consoleReporter.setSql(new SqlLoader(jdbcTemplateManager, properties).getSql());
+        consoleReporter.setSql(sqlGenerator.getSql());
         // 启动控制台报告
         consoleReporter.start(properties.getSampleRate());
     }
 
     public void stop(StressContext.StopReason reason) {
-        if (currentContext != null && currentContext.isRunning()) {
-            currentContext.shutdown(reason);
+        if (stressContext != null && stressContext.isRunning()) {
+            stressContext.shutdown(reason);
             consoleReporter.stop();
             //log.info("压测已停止，原因: {}", reason.getDescription());
-            currentContext = null;
+            stressContext = null;
         }
     }
 
     private class StressTask implements Runnable {
-        private final SqlLoader sqlLoader = new SqlLoader(jdbcTemplateManager, properties);
-        StressTask() {
-            sqlLoader.reLoad();
-            sqlLoader.switchDataSource();
+        private final SqlGenerator sqlGenerator;
+        StressTask(SqlGenerator sqlGenerator) {
+            //UserContext userContext = AppContextHolder.getBean(UserContext.class);
+            this.sqlGenerator = sqlGenerator;
+            //sqlGenerator.reLoad();
+            //sqlGenerator.switchDataSource(userContext.getDatasourceName());
         }
         @Override
         public void run() {
-            while (currentContext != null && currentContext.isRunning()) {
+            while (stressContext != null && stressContext.isRunning()) {
                 long startTime = System.currentTimeMillis();
                 try {
-                    sqlLoader.executeSql();
+                    sqlGenerator.executeSql();
                     long responseTime = System.currentTimeMillis() - startTime;
                     metricsCollector.recordSuccess(responseTime);
                 } catch (Exception e) {
@@ -115,9 +126,9 @@ public class StressExecutor {
         Thread autoStopThread = new Thread(() -> {
             try {
                 Thread.sleep(properties.getDuration() * 1000L);
-                if (currentContext != null 
-                        && currentContext.isRunning() 
-                        && taskId.equals(currentContext.getTaskId())) {
+                if (stressContext != null
+                        && stressContext.isRunning()
+                        && taskId.equals(stressContext.getTaskId())) {
                     stop(StressContext.StopReason.TIMEOUT);
                 }
             } catch (InterruptedException e) {
@@ -129,7 +140,7 @@ public class StressExecutor {
     }
 
     public boolean isRunning() {
-        return currentContext != null && currentContext.isRunning();
+        return stressContext != null && stressContext.isRunning();
     }
 
     @PostMapping("/status")

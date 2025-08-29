@@ -8,7 +8,7 @@ import java.util.Map;
 
 @Data
 @Component
-@ConfigurationProperties(prefix = "dbconfig")
+@ConfigurationProperties(prefix = "jdbc")
 public class DataSourceProperties {
     private Map<String, DatabaseConfig> datasources;
 
