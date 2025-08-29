@@ -10,15 +10,15 @@ jdbc:
   datasources:
     mysql:
       name: MySQL数据库
-      url: jdbc:mysql://10.203.88.206:3306/fs_cia?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&useSSL=false
+      url: jdbc:mysql://127.0.0.1:3306/fs_cia?useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true&useSSL=false
       driver-class-name: com.mysql.cj.jdbc.Driver
-      username: kcia
-      password: kcia
+      username: abc
+      password: 123
     sqlserver:
       name: SQLServer数据库
-      url: jdbc:sqlserver://10.203.88.206:1433;DatabaseName=fs_cia
+      url: jdbc:sqlserver://127.0.0.1:1433;DatabaseName=fs_cia
       driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-      username: sa
+      username: abc
       password: 1qaz@WSX
     postgresql:
       name: PostgreSQL数据库
